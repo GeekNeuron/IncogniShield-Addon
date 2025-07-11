@@ -1,4 +1,4 @@
-# IncogniShield 🛡️ [Add-on]
+# ZeroTrace [Add-on]
 
 An advanced, open-source browser extension for comprehensive privacy protection, anti-tracking, and digital identity management.
 
