@@ -1,11 +1,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  // Apply theme on load
   const { settings } = await chrome.storage.local.get('settings');
   if (settings && settings.darkMode) {
     document.body.classList.add('dark-theme');
   }
 
-  // --- Element Selectors ---
   const globalStatusDiv = document.getElementById('global-status');
   const toggleGlobalBtn = document.getElementById('toggleGlobalBtn');
   const runTestBtn = document.getElementById('runTestBtn');
@@ -20,7 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openOptionsLink = document.getElementById('open-options');
   const openHelpLink = document.getElementById('open-help');
 
-  // --- Initial Setup ---
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
     document.body.innerHTML = '<div class="header-container"><img src="icons/icon-on-128.png" alt="ZeroTrace Icon" width="48" height="48"><p class="header-subtitle">Your Advanced Privacy Companion</p></div><p>This page cannot be analyzed.</p>';
@@ -35,12 +32,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let whitelistedSites = data.whitelistedSites || [];
   let isCurrentSiteWhitelisted = whitelistedSites.includes(currentHostname);
 
-  // --- UI Update Function ---
   function updateUI() {
     globalStatusDiv.textContent = isProtected ? 'Protection is ON' : 'Protection is OFF';
     globalStatusDiv.className = isProtected ? 'on' : 'off';
     toggleGlobalBtn.textContent = isProtected ? 'Turn Off Protection' : 'Turn On Protection';
-    runTestBtn.disabled = !isProtected; // دکمه تست فقط در حالت روشن کار کند
+    runTestBtn.disabled = !isProtected;
 
     if (toggleSiteBtn) {
         toggleSiteBtn.textContent = isCurrentSiteWhitelisted ? 'Re-enable for this site' : 'Disable for this site';
@@ -50,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateUI();
 
-  // --- Event Listeners ---
   chrome.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
     if (response && blockedCountSpan) blockedCountSpan.textContent = response.count;
   });
@@ -83,7 +78,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.tabs.create({ url: 'help.html' });
   });
 
-  // --- Live Test Logic (Updated with async/await) ---
   runTestBtn.addEventListener('click', async () => {
     if (liveTestSection.style.display === 'block') {
       liveTestSection.style.display = 'none';
@@ -94,13 +88,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     liveTestSection.style.display = 'block';
     runTestBtn.textContent = 'Hide Test Results';
 
-    // Reset fields before starting
     testIp.textContent = 'Testing...';
     testTimezone.textContent = 'Waiting for IP...';
     testGeo.textContent = 'Waiting for IP...';
     testLang.textContent = 'Waiting for IP...';
 
-    // 1. Await IP Address first
     try {
       const response = await fetch('http://ip-api.com/json/?fields=status,message,query,country,city');
       if (!response.ok) throw new Error('Network response was not ok');
@@ -110,18 +102,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       testIp.textContent = 'Unavailable';
     }
-    
-    // 2. Now that IP is fetched, run other tests
-    // The browser's APIs will now return the spoofed values because the script has already been injected.
-    
-    // Test Timezone
+
     try {
       testTimezone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (e) {
       testTimezone.textContent = 'Error';
     }
     
-    // Test Geolocation
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -132,7 +119,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     );
 
-    // Test Language
     testLang.textContent = navigator.language;
   });
+
+    const clearDataBtn = document.getElementById('clearDataBtn');
+
+  if (clearDataBtn) {
+    clearDataBtn.addEventListener('click', () => {
+      clearDataBtn.disabled = true;
+      clearDataBtn.textContent = 'Clearing...';
+      chrome.runtime.sendMessage({ action: "clearPrivacyData" });
+      setTimeout(() => window.close(), 2000);
+    });
+  }
 });
