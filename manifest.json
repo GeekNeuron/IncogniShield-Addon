@@ -12,7 +12,8 @@
     "alarms",
     "tabs",
     "scripting",
-    "webRequest"
+    "webRequest",
+    "BrowseData"
   ],
   "host_permissions": [
     "<all_urls>",
