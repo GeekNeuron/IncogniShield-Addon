@@ -178,7 +178,7 @@ async function clearDynamicRules() {
 }
 
 function updateIcon(isProtected) {
-  const iconPath = isProtected ? 'icons/icon-on-128.png' : 'icons/icon-off-128.png';
+  const iconPath = isProtected ? 'icons/icon-on-16.png' : 'icons/icon-off-16.png';
   chrome.action.setIcon({ path: iconPath });
 }
 
