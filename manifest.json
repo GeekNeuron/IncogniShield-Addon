@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Privacy Shield",
+  "name": "ZeroTrace",
   "version": "4.0",
   "description": "An advanced extension for WebRTC leak protection, tracker blocking, and fingerprinting defense.",
   "options_page": "options.html",
