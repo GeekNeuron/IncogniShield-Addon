@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const { settings = defaultSettings, whitelistedSites = [], customBlocklists = [] } = await chrome.storage.local.get(['settings', 'whitelistedSites', 'customBlocklists']);
 
-  // --- Theme Management ---
   const applyTheme = (isDark) => {
     document.body.classList.toggle('dark-theme', isDark);
   };
@@ -20,7 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       darkModeToggle.checked = settings.darkMode;
   }
 
-  // --- Event Listeners ---
   if (darkModeToggle) {
     darkModeToggle.addEventListener('change', async (event) => {
       const isDark = event.target.checked;
@@ -35,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const key = toggle.dataset.setting;
     if (key === 'darkMode') return;
     
-    toggle.checked = settings[key] !== false; // Default to true if undefined
+    toggle.checked = settings[key] !== false;
 
     toggle.addEventListener('change', async event => {
       const value = event.target.checked;
@@ -46,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Blocklist Management
   if (blocklistUrlsTextarea) {
       blocklistUrlsTextarea.value = customBlocklists.join('\n');
   }
@@ -61,7 +58,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
   }
 
-  // --- Whitelist Logic ---
   function renderWhitelist(sites) {
     if (!whitelistList) return;
     whitelistList.innerHTML = '';
