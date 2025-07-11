@@ -7,8 +7,6 @@ const defaultSettings = {
 
 let blockedCounts = {};
 
-// --- Main Protection Logic ---
-
 async function applyProtections() {
   const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
 
@@ -21,7 +19,6 @@ async function applyProtections() {
     return;
   }
 
-  // Apply protections based on settings
   if (settings.webrtc) {
     await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
   }
@@ -41,8 +38,6 @@ async function applyProtections() {
 
   updateIcon(true);
 }
-
-// --- Script Injection & Tab Management ---
 
 async function injectScriptIntoAllTabs(spoofingData) {
   const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
@@ -131,8 +126,6 @@ async function reloadAllTabs() {
     }
 }
 
-// --- Helper & Data Fetching Functions ---
-
 async function updateDynamicRules(whitelistedSites = []) {
   const { customBlocklists = [] } = await chrome.storage.local.get('customBlocklists');
   const allBlocklistUrls = [...DEFAULT_BLOCKLISTS, ...customBlocklists];
@@ -199,8 +192,6 @@ async function fetchLanguage() {
   if (response?.ok) { const data = await response.json(); if(data.localityInfo?.informative[0]?.isoCode) return data.localityInfo.informative[0].isoCode; }
   return null;
 }
-
-// --- Event Listeners ---
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
