@@ -9,9 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const runTestBtn = document.getElementById('runTestBtn');
   const liveTestSection = document.getElementById('live-test-section');
   const testIp = document.getElementById('test-ip');
-  const testTimezone = document.getElementById('test-timezone');
-  const testGeo = document.getElementById('test-geo');
-  const testLang = document.getElementById('test-lang');
   const blockedCountSpan = document.getElementById('blocked-count');
   const currentSiteP = document.getElementById('current-site');
   const toggleSiteBtn = document.getElementById('toggleSiteBtn');
@@ -89,9 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     runTestBtn.textContent = 'Hide Test Results';
 
     testIp.textContent = 'Testing...';
-    testTimezone.textContent = 'Waiting for IP...';
-    testGeo.textContent = 'Waiting for IP...';
-    testLang.textContent = 'Waiting for IP...';
 
     try {
       const response = await fetch('http://ip-api.com/json/?fields=status,message,query,country,city');
@@ -103,23 +97,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       testIp.textContent = 'Unavailable';
     }
 
-    try {
-      testTimezone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch (e) {
-      testTimezone.textContent = 'Error';
-    }
-    
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        testGeo.textContent = `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`;
-      },
-      () => {
-        testGeo.textContent = 'Denied or Unavailable';
-      }
-    );
-
-    testLang.textContent = navigator.language;
   });
 
     const clearDataBtn = document.getElementById('clearDataBtn');
