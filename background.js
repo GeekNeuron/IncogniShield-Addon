@@ -1,4 +1,4 @@
-const DEFAULT_BLOCKLISTS = ['https://s3.amazonaws.com/lists.disconnect.me/simple_tracking.txt'];
+const DEFAULT_BLOCKLISTS = ['https://s3.amazonaws.com/lists/disconnect.me/simple_tracking.txt'];
 const WEBRTC_POLICIES = { PROTECTED: 'disable_non_proxied_udp', DEFAULT: 'default' };
 const defaultSettings = {
   webrtc: true, tracker: true, fingerprint: true,
@@ -9,7 +9,6 @@ let blockedCounts = {};
 
 async function handleTabProtection(tabId) {
   const { settings = defaultSettings, isProtected } = await browser.storage.local.get(['settings', 'isProtected']);
-
   if (!isProtected) return;
 
   const spoofingFeatures = ['fingerprint', 'timezone', 'geolocation', 'language'];
@@ -41,7 +40,6 @@ async function applyGlobalProtections() {
   if (settings.tracker) {
     await updateDynamicRules(whitelistedSites);
   }
-
   updateIcon(true);
 
   const tabs = await browser.tabs.query({ url: ["http://*/*", "https://*/*"] });
@@ -239,7 +237,6 @@ browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (isProtected) {
       browser.action.setBadgeText({ text: 'ON', tabId: tabId });
       browser.action.setBadgeBackgroundColor({ color: '#34A853', tabId: tabId });
-      
       handleTabProtection(tabId);
     } else {
       browser.action.setBadgeText({ text: '', tabId: tabId });
@@ -263,7 +260,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case "getTabCount":
       sendResponse({ count: blockedCounts[request.tabId] || 0 });
       break;
-    
+
     case "clearPrivacyData":
       const dataTypesToRemove = {
         "cache": true,
@@ -279,7 +276,6 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
         reloadAllTabs();
       });
       break;
-
   }
   return true;
 });
