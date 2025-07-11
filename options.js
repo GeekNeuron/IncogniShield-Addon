@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('contextmenu', event => event.preventDefault());
   const whitelistList = document.getElementById('whitelist-list');
   const darkModeToggle = document.querySelector('[data-setting="darkMode"]');
   const blocklistUrlsTextarea = document.getElementById('blocklist-urls');
@@ -87,4 +88,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderWhitelist(whitelistedSites);
 });
-document.addEventListener('contextmenu', event => event.preventDefault());
