@@ -1,11 +1,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  // Apply theme on load
   const { settings } = await chrome.storage.local.get('settings');
   if (settings && settings.darkMode) {
     document.body.classList.add('dark-theme');
   }
 
-  // --- Element Selectors ---
   const globalStatusDiv = document.getElementById('global-status');
   const toggleGlobalBtn = document.getElementById('toggleGlobalBtn');
   const runTestBtn = document.getElementById('runTestBtn');
@@ -20,7 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openOptionsLink = document.getElementById('open-options');
   const openHelpLink = document.getElementById('open-help');
 
-  // --- Initial Setup ---
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
     document.body.innerHTML = '<div class="header-container"><img src="icons/icon-on-128.png" alt="Privacy Shield Icon" width="48" height="48"></div><p>This page cannot be analyzed.</p>';
@@ -35,7 +32,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   let whitelistedSites = data.whitelistedSites || [];
   let isCurrentSiteWhitelisted = whitelistedSites.includes(currentHostname);
 
-  // --- UI Update Function ---
   function updateUI() {
     globalStatusDiv.textContent = isProtected ? 'Protection is ON' : 'Protection is OFF';
     globalStatusDiv.className = isProtected ? 'on' : 'off';
@@ -49,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateUI();
 
-  // --- Event Listeners ---
   chrome.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
     if (response && blockedCountSpan) blockedCountSpan.textContent = response.count;
   });
