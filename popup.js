@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.classList.add('dark-theme');
   }
 
+  document.addEventListener('contextmenu', event => event.preventDefault());
+
   const globalStatusDiv = document.getElementById('global-status');
   const toggleGlobalBtn = document.getElementById('toggleGlobalBtn');
   const runTestBtn = document.getElementById('runTestBtn');
@@ -14,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const toggleSiteBtn = document.getElementById('toggleSiteBtn');
   const openOptionsLink = document.getElementById('open-options');
   const openHelpLink = document.getElementById('open-help');
+  const clearDataBtn = document.getElementById('clearDataBtn');
 
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
@@ -22,7 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
   const currentHostname = new URL(tab.url).hostname;
-  if(currentSiteP) currentSiteP.textContent = currentHostname;
+  if (currentSiteP) currentSiteP.textContent = currentHostname;
 
   const data = await browser.storage.local.get(['isProtected', 'whitelistedSites']);
   let isProtected = !!data.isProtected;
@@ -34,18 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     globalStatusDiv.className = isProtected ? 'on' : 'off';
     toggleGlobalBtn.textContent = isProtected ? 'Turn Off Protection' : 'Turn On Protection';
     runTestBtn.disabled = !isProtected;
+    if (clearDataBtn) clearDataBtn.disabled = !isProtected;
 
     if (toggleSiteBtn) {
-        toggleSiteBtn.textContent = isCurrentSiteWhitelisted ? 'Re-enable for this site' : 'Disable for this site';
-        toggleSiteBtn.disabled = !isProtected;
+      toggleSiteBtn.textContent = isCurrentSiteWhitelisted ? 'Re-enable for this site' : 'Disable for this site';
+      toggleSiteBtn.disabled = !isProtected;
     }
   }
 
   updateUI();
 
-  browser.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
-    if (response && blockedCountSpan) blockedCountSpan.textContent = response.count;
-  });
+  if (isProtected) {
+    const response = await browser.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id });
+    if (response && blockedCountSpan) {
+      blockedCountSpan.textContent = response.count;
+    }
+  }
 
   toggleGlobalBtn.addEventListener('click', () => {
     browser.runtime.sendMessage({ action: "toggleGlobalProtection" });
@@ -75,16 +82,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     browser.tabs.create({ url: 'help.html' });
   });
 
+  if (clearDataBtn) {
+    clearDataBtn.addEventListener('click', () => {
+      clearDataBtn.disabled = true;
+      clearDataBtn.textContent = 'Clearing...';
+      browser.runtime.sendMessage({ action: "clearPrivacyData" });
+      setTimeout(() => window.close(), 2000);
+    });
+  }
+
   runTestBtn.addEventListener('click', async () => {
     if (liveTestSection.style.display === 'block') {
       liveTestSection.style.display = 'none';
+      testIp.textContent = 'Click to test...';
       runTestBtn.textContent = 'Run Live Test';
       return;
     }
 
     liveTestSection.style.display = 'block';
-    runTestBtn.textContent = 'Hide Test Results';
-
+    runTestBtn.textContent = 'Hide Test';
     testIp.textContent = 'Testing...';
 
     try {
@@ -96,17 +112,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       testIp.textContent = 'Unavailable';
     }
-
   });
-
-    const clearDataBtn = document.getElementById('clearDataBtn');
-
-  if (clearDataBtn) {
-    clearDataBtn.addEventListener('click', () => {
-      clearDataBtn.disabled = true;
-      clearDataBtn.textContent = 'Clearing...';
-      browser.runtime.sendMessage({ action: "clearPrivacyData" });
-      setTimeout(() => window.close(), 2000);
-    });
-  }
 });
