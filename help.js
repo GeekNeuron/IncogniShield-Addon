@@ -4,3 +4,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.classList.add('dark-theme');
   }
 });
+document.addEventListener('contextmenu', event => event.preventDefault());
