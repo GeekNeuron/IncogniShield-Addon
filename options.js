@@ -1,19 +1,18 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const whitelistList = document.getElementById('whitelist-list');
   const darkModeToggle = document.querySelector('[data-setting="darkMode"]');
+  const blocklistUrlsTextarea = document.getElementById('blocklist-urls');
+  const saveBlocklistsBtn = document.getElementById('save-blocklists');
   const defaultSettings = {
     webrtc: true, tracker: true, fingerprint: true,
     timezone: true, geolocation: true, language: true, darkMode: false,
   };
 
-  const { settings = defaultSettings, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'whitelistedSites']);
+  const { settings = defaultSettings, whitelistedSites = [], customBlocklists = [] } = await chrome.storage.local.get(['settings', 'whitelistedSites', 'customBlocklists']);
 
+  // --- Theme Management ---
   const applyTheme = (isDark) => {
-    if (isDark) {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
-    }
+    document.body.classList.toggle('dark-theme', isDark);
   };
   
   applyTheme(settings.darkMode);
@@ -21,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       darkModeToggle.checked = settings.darkMode;
   }
 
+  // --- Event Listeners ---
   if (darkModeToggle) {
     darkModeToggle.addEventListener('change', async (event) => {
       const isDark = event.target.checked;
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const key = toggle.dataset.setting;
     if (key === 'darkMode') return;
     
-    toggle.checked = settings[key];
+    toggle.checked = settings[key] !== false; // Default to true if undefined
 
     toggle.addEventListener('change', async event => {
       const value = event.target.checked;
@@ -46,7 +46,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
+  // Blocklist Management
+  if (blocklistUrlsTextarea) {
+      blocklistUrlsTextarea.value = customBlocklists.join('\n');
+  }
+  if (saveBlocklistsBtn) {
+      saveBlocklistsBtn.addEventListener('click', async () => {
+        const urls = blocklistUrlsTextarea.value.split('\n').map(url => url.trim()).filter(Boolean);
+        await chrome.storage.local.set({ customBlocklists: urls });
+        
+        chrome.runtime.sendMessage({ action: "settingsChanged" });
+        saveBlocklistsBtn.textContent = 'Saved!';
+        setTimeout(() => { saveBlocklistsBtn.textContent = 'Save and Update Rules'; }, 2000);
+      });
+  }
+
+  // --- Whitelist Logic ---
   function renderWhitelist(sites) {
+    if (!whitelistList) return;
     whitelistList.innerHTML = '';
     if (sites.length === 0) {
       whitelistList.innerHTML = '<li>No sites are whitelisted.</li>';
