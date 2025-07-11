@@ -7,52 +7,51 @@ const defaultSettings = {
 
 let blockedCounts = {};
 
-// --- Main Protection Logic ---
+async function handleTabProtection(tabId) {
+  const { settings = defaultSettings, isProtected } = await chrome.storage.local.get(['settings', 'isProtected']);
 
-async function applyProtections(specificTabId = null) {
-  const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
+  if (!isProtected) return;
 
-  // Global settings are applied only when no specific tab is targeted
-  if (!specificTabId) {
-    await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.DEFAULT });
-    await clearDynamicRules();
-    
-    if (!isProtected) {
-      updateIcon(false);
-      reloadAllTabs(); 
-      return;
-    }
-
-    if (settings.webrtc) {
-      await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
-    }
-    if (settings.tracker) {
-      await updateDynamicRules(whitelistedSites);
-    }
-    updateIcon(true);
-  }
-
-  // --- Spoofing Logic (runs for global toggle OR for a specific tab update) ---
   const spoofingFeatures = ['fingerprint', 'timezone', 'geolocation', 'language'];
-  if (isProtected && spoofingFeatures.some(s => settings[s])) {
+  if (spoofingFeatures.some(s => settings[s])) {
     const spoofingData = { settings };
-    // Fetch fresh data for spoofing
     if (settings.timezone) spoofingData.targetTimezone = await fetchTimezone();
     if (settings.geolocation) spoofingData.targetGeolocation = await fetchGeolocation();
     if (settings.language) spoofingData.targetLanguage = await fetchLanguage();
     
-    if (specificTabId) {
-      injectScript(specificTabId, spoofingData);
-    } else {
-      injectScriptIntoAllTabs(spoofingData);
-    }
+    injectScript(tabId, spoofingData);
   }
 }
 
-// --- Script Injection & Tab Management ---
+async function applyGlobalProtections() {
+  const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
+
+  await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.DEFAULT });
+  await clearDynamicRules();
+  
+  if (!isProtected) {
+    updateIcon(false);
+    reloadAllTabs(); 
+    return;
+  }
+
+  if (settings.webrtc) {
+    await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
+  }
+  if (settings.tracker) {
+    await updateDynamicRules(whitelistedSites);
+  }
+
+  updateIcon(true);
+
+  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  for (const tab of tabs) {
+    handleTabProtection(tab.id);
+  }
+}
 
 async function injectScript(tabId, spoofingData) {
-    if (!spoofingData || Object.keys(spoofingData).length <= 1) return;
+    if (!spoofingData || !spoofingData.settings || Object.keys(spoofingData).length <= 1) return;
     if (!tabId) return;
 
     chrome.scripting.executeScript({
@@ -131,21 +130,12 @@ async function injectScript(tabId, spoofingData) {
     }).catch(err => {});
 }
 
-async function injectScriptIntoAllTabs(spoofingData) {
-  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-  for (const tab of tabs) {
-    injectScript(tab.id, spoofingData);
-  }
-}
-
 async function reloadAllTabs() {
     const tabs = await chrome.tabs.query({url: ["http://*/*", "https://*/*"]});
     for (const tab of tabs) {
       try { await chrome.tabs.reload(tab.id, { bypassCache: true }); } catch (e) {}
     }
 }
-
-// --- Helper & Data Fetching Functions ---
 
 async function updateDynamicRules(whitelistedSites = []) {
   const { customBlocklists = [] } = await chrome.storage.local.get('customBlocklists');
@@ -194,7 +184,6 @@ async function clearDynamicRules() {
 function updateIcon(isProtected) {
   const iconPath = isProtected ? 'icons/icon-on-16.png' : 'icons/icon-off-16.png';
   chrome.action.setIcon({ path: iconPath });
-  // بازگرداندن متن ON به آیکون
   chrome.action.setBadgeText({ text: isProtected ? 'ON' : '' });
   chrome.action.setBadgeBackgroundColor({ color: '#34A853' });
 }
@@ -217,8 +206,6 @@ async function fetchLanguage() {
   return null;
 }
 
-// --- Event Listeners ---
-
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
   chrome.alarms.create('updateBlocklistAlarm', { periodInMinutes: 1440 });
@@ -226,7 +213,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onStartup.addListener(async () => {
   const { isProtected } = await chrome.storage.local.get('isProtected');
-  if (isProtected) await applyProtections();
+  if (isProtected) await applyGlobalProtections();
   else updateIcon(false);
 });
 
@@ -240,25 +227,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.webRequest.onErrorOccurred.addListener((details) => {
   if (details.error === 'net::ERR_BLOCKED_BY_CLIENT' && details.tabId > 0) {
     blockedCounts[details.tabId] = (blockedCounts[details.tabId] || 0) + 1;
-    // بازگرداندن شمارنده به آیکون
     chrome.action.setBadgeText({ text: blockedCounts[details.tabId].toString(), tabId: details.tabId });
     chrome.action.setBadgeBackgroundColor({ color: '#d32f2f', tabId: details.tabId });
   }
 }, { urls: ['<all_urls>'] });
 
-
-// اصلاح نهایی برای حل مشکل Race Condition در تب‌های جدید
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' && tab.url && (tab.url.startsWith('http:') || tab.url.startsWith('https:'))) {
     blockedCounts[tabId] = 0;
     const { isProtected } = await chrome.storage.local.get('isProtected');
     if (isProtected) {
-      // بازگرداندن متن ON هنگام رفرش
       chrome.action.setBadgeText({ text: 'ON', tabId: tabId });
       chrome.action.setBadgeBackgroundColor({ color: '#34A853', tabId: tabId });
       
-      // به جای تکیه بر حافظه موقت، مستقیماً تمام عملیات جعل هویت را برای این تب خاص اجرا می‌کنیم
-      applyProtections(tabId);
+      handleTabProtection(tabId);
     } else {
       chrome.action.setBadgeText({ text: '', tabId: tabId });
     }
@@ -271,12 +253,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case "toggleGlobalProtection":
       chrome.storage.local.get('isProtected', data => {
-        chrome.storage.local.set({ isProtected: !data.isProtected }).then(() => applyProtections());
+        chrome.storage.local.set({ isProtected: !data.isProtected }).then(applyGlobalProtections);
       });
       break;
     case "whitelistChanged":
     case "settingsChanged":
-      applyProtections();
+      applyGlobalProtections();
       break;
     case "getTabCount":
       sendResponse({ count: blockedCounts[request.tabId] || 0 });
