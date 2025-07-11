@@ -1,0 +1,103 @@
+document.addEventListener('DOMContentLoaded', async () => {
+  const { settings } = await chrome.storage.local.get('settings');
+  if (settings && settings.darkMode) {
+    document.body.classList.add('dark-theme');
+  }
+
+  const globalStatusDiv = document.getElementById('global-status');
+  const toggleGlobalBtn = document.getElementById('toggleGlobalBtn');
+  const runTestBtn = document.getElementById('runTestBtn');
+  const liveTestSection = document.getElementById('live-test-section');
+  const testIp = document.getElementById('test-ip');
+  const testTimezone = document.getElementById('test-timezone');
+  const testGeo = document.getElementById('test-geo');
+  const testLang = document.getElementById('test-lang');
+  const blockedCountSpan = document.getElementById('blocked-count');
+  const currentSiteP = document.getElementById('current-site');
+  const toggleSiteBtn = document.getElementById('toggleSiteBtn');
+  const openOptionsLink = document.getElementById('open-options');
+  const openHelpLink = document.getElementById('open-help');
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.url) {
+    document.body.innerHTML = 'Cannot run on this page.';
+    return;
+  }
+  const currentHostname = new URL(tab.url).hostname;
+  if(currentSiteP) currentSiteP.textContent = currentHostname;
+
+  const data = await chrome.storage.local.get(['isProtected', 'whitelistedSites']);
+  let isProtected = !!data.isProtected;
+  let whitelistedSites = data.whitelistedSites || [];
+  let isCurrentSiteWhitelisted = whitelistedSites.includes(currentHostname);
+
+  function updateUI() {
+    globalStatusDiv.textContent = isProtected ? 'Protection is ON' : 'Protection is OFF';
+    globalStatusDiv.className = isProtected ? 'on' : 'off';
+    toggleGlobalBtn.textContent = isProtected ? 'Turn Off Protection' : 'Turn On Protection';
+
+    if (toggleSiteBtn) {
+        toggleSiteBtn.textContent = isCurrentSiteWhitelisted ? 'Re-enable for this site' : 'Disable for this site';
+        toggleSiteBtn.disabled = !isProtected;
+    }
+  }
+
+  updateUI();
+
+  chrome.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
+    if (response && blockedCountSpan) blockedCountSpan.textContent = response.count;
+  });
+
+  toggleGlobalBtn.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: "toggleGlobalProtection" });
+    window.close();
+  });
+
+  if (toggleSiteBtn) {
+    toggleSiteBtn.addEventListener('click', async () => {
+      const { whitelistedSites: currentList = [] } = await chrome.storage.local.get('whitelistedSites');
+      if (currentList.includes(currentHostname)) {
+        await chrome.storage.local.set({ whitelistedSites: currentList.filter(site => site !== currentHostname) });
+      } else {
+        await chrome.storage.local.set({ whitelistedSites: [...currentList, currentHostname] });
+      }
+      chrome.runtime.sendMessage({ action: "whitelistChanged" });
+      window.close();
+    });
+  }
+
+  openOptionsLink.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.runtime.openOptionsPage();
+  });
+
+  openHelpLink.addEventListener('click', e => {
+    e.preventDefault();
+    chrome.tabs.create({ url: 'help.html' });
+  });
+
+  runTestBtn.addEventListener('click', () => {
+    if (liveTestSection.style.display === 'block') {
+      liveTestSection.style.display = 'none';
+      runTestBtn.textContent = 'Run Live Test';
+      return;
+    }
+
+    liveTestSection.style.display = 'block';
+    runTestBtn.textContent = 'Hide Test Results';
+
+    fetch('http://ip-api.com/json/?fields=query,country,city')
+      .then(res => res.json())
+      .then(data => { testIp.textContent = `${data.query} (${data.city}, ${data.country})`; })
+      .catch(() => { testIp.textContent = 'Error'; });
+
+    try { testTimezone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone; } 
+    catch (e) { testTimezone.textContent = 'Error'; }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { testGeo.textContent = `${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)}`; },
+      () => { testGeo.textContent = 'Denied or Unavailable'; }
+    );
+    testLang.textContent = navigator.language;
+  });
+});

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>IncogniShield</title>
+  <style>
+    html {
+      border-radius: 10px;
+    }
+    body {
+      font-family: sans-serif;
+      width: 280px;
+      text-align: center;
+      padding: 10px;
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--bg-color, #f9f9f9);
+      color: var(--text-color, #333);
+    }
+    body.dark-theme {
+        --bg-color: #202124; --surface-color: #2d2e30; --text-color: #e8eaed;
+        --header-color: #8ab4f8; --secondary-text-color: #969ba1;
+        --border-color: #5f6368; --accent-color: #8ab4f8;
+    }
+    h3 { color: var(--header-color, #1a73e8); margin-top: 0; }
+    p { color: var(--secondary-text-color, #5f6368); }
+    #global-status { font-weight: bold; font-size: 1.1em; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+    .on { color: white; background-color: #34A853; }
+    .off { color: white; background-color: #5F6368; }
+    button { padding: 8px 16px; font-size: 1em; cursor: pointer; border: none; border-radius: 5px; width: 100%; box-sizing: border-box; }
+    hr { border: none; border-top: 1px solid var(--border-color, #eee); margin: 10px 0; }
+    #site-controls, #counter-section { font-size: 0.9em; }
+    #current-site { font-weight: bold; color: var(--accent-color, #0057e7); word-break: break-all; margin-top: 5px; margin-bottom: 10px;}
+    #counter-section { margin-bottom: 10px; padding: 10px; background-color: var(--surface-color, #f0f0f0); border: 1px solid var(--border-color, #eee); border-radius: 8px; }
+    #blocked-count { font-size: 1.5em; font-weight: bold; color: #d32f2f; }
+    a { color: var(--accent-color, #0057e7); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #live-test-section { display: none; margin-top: 10px; text-align: left; font-size: 0.85em; background-color: var(--surface-color, #f0f0f0); border: 1px solid var(--border-color, #eee); padding: 10px; border-radius: 8px; }
+    #live-test-section p { margin: 5px 0; }
+    #live-test-section strong { color: var(--header-color, #1a73e8); }
+    .test-result { font-weight: bold; color: var(--text-color, #333); }
+
+    .header-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.header-subtitle {
+  margin: 5px 0 0 0;
+  font-size: 0.9em;
+  font-weight: bold;
+  color: var(--secondary-text-color, #5f6368);
+}
+  </style>
+</head>
+<body>
+  <div class="header-container">
+    <img src="icons/icon-on-128.png" alt="Privacy Shield Icon" width="48" height="48">
+    <p class="header-subtitle">Your Advanced Privacy Shield</p>
+  </div>
+  <div id="global-status">Loading...</div>
+  <button id="toggleGlobalBtn">Toggle Protection</button>
+
+  <hr>
+
+  <div id="counter-section">
+    <span id="blocked-count">0</span>
+    <p style="margin:0; font-size:0.9em;">trackers blocked on this page.</p>
+  </div>
+  
+  <button id="runTestBtn" style="background-color: #fbbc05; color: black;">Run Live Test</button>
+
+  <div id="live-test-section">
+    <p><strong>IP Address:</strong> <span id="test-ip" class="test-result">Testing...</span></p>
+    <p><strong>Browser Timezone:</strong> <span id="test-timezone" class="test-result">Testing...</span></p>
+    <p><strong>Browser Geolocation:</strong> <span id="test-geo" class="test-result">Testing...</span></p>
+    <p><strong>Browser Language:</strong> <span id="test-lang" class="test-result">Testing...</span></p>
+    <hr style="margin: 10px 0;">
+    <p style="text-align:center;">For advanced tests, use these links:</p>
+    <div style="display: flex; justify-content: space-around;">
+      <a href="https://browserleaks.com/webrtc" target="_blank">WebRTC Test</a>
+      <a href="https://coveryourtracks.eff.org" target="_blank">Fingerprint Test</a>
+    </div>
+  </div>
+  
+  <hr>
+
+  <div id="site-controls">
+     <p style="margin:0">Controls for:</p>
+     <p id="current-site">...</p>
+     <button id="toggleSiteBtn" style="background-color:#4285F4; color:white;">Disable for this site</button>
+  </div>
+
+  <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 15px;">
+    <a href="#" id="open-options">⚙️ Settings</a>
+    <a href="#" id="open-help">❓ Guide</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
