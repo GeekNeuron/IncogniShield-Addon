@@ -6,25 +6,21 @@ const defaultSettings = {
 };
 
 let blockedCounts = {};
-let cachedSpoofingData = {}; // حافظه موقت برای داده‌های جعل هویت
-
-// --- Main Protection Logic ---
+let cachedSpoofingData = {};
 
 async function applyProtections() {
   const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
 
-  // Always reset protections to default first
   await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.DEFAULT });
   await clearDynamicRules();
   
   if (!isProtected) {
     updateIcon(false);
-    cachedSpoofingData = {}; // Clear the cache when protection is off
+    cachedSpoofingData = {};
     reloadAllTabs(); 
     return;
   }
 
-  // Apply protections based on settings
   if (settings.webrtc) {
     await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
   }
@@ -39,17 +35,15 @@ async function applyProtections() {
     if (settings.geolocation) spoofingData.targetGeolocation = await fetchGeolocation();
     if (settings.language) spoofingData.targetLanguage = await fetchLanguage();
     
-    cachedSpoofingData = spoofingData; // Cache the fetched data
+    cachedSpoofingData = spoofingData;
     injectScriptIntoAllTabs(spoofingData);
   }
 
   updateIcon(true);
 }
 
-// --- Script Injection & Tab Management ---
-
 async function injectScript(tabId, spoofingData) {
-    if (!spoofingData || Object.keys(spoofingData).length <= 1) return; // Don't inject if only settings object exists
+    if (!spoofingData || Object.keys(spoofingData).length <= 1) return;
     if (!tabId) return;
 
     chrome.scripting.executeScript({
@@ -142,8 +136,6 @@ async function reloadAllTabs() {
     }
 }
 
-// --- Helper & Data Fetching Functions ---
-
 async function updateDynamicRules(whitelistedSites = []) {
   const { customBlocklists = [] } = await chrome.storage.local.get('customBlocklists');
   const allBlocklistUrls = [...DEFAULT_BLOCKLISTS, ...customBlocklists];
@@ -191,7 +183,6 @@ async function clearDynamicRules() {
 function updateIcon(isProtected) {
   const iconPath = isProtected ? 'icons/icon-on-16.png' : 'icons/icon-off-16.png';
   chrome.action.setIcon({ path: iconPath });
-  // بازگرداندن متن ON به آیکون
   chrome.action.setBadgeText({ text: isProtected ? 'ON' : '' });
   chrome.action.setBadgeBackgroundColor({ color: '#34A853' });
 }
@@ -214,8 +205,6 @@ async function fetchLanguage() {
   return null;
 }
 
-// --- Event Listeners ---
-
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
   chrome.alarms.create('updateBlocklistAlarm', { periodInMinutes: 1440 });
@@ -237,21 +226,18 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.webRequest.onErrorOccurred.addListener((details) => {
   if (details.error === 'net::ERR_BLOCKED_BY_CLIENT' && details.tabId > 0) {
     blockedCounts[details.tabId] = (blockedCounts[details.tabId] || 0) + 1;
-    // بازگرداندن شمارنده به آیکون
     chrome.action.setBadgeText({ text: blockedCounts[details.tabId].toString(), tabId: details.tabId });
     chrome.action.setBadgeBackgroundColor({ color: '#d32f2f', tabId: details.tabId });
   }
 }, { urls: ['<all_urls>'] });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
-  // This listener now handles script injection for new/reloaded tabs
   if (changeInfo.status === 'loading') {
     blockedCounts[tabId] = 0;
     
     const { isProtected, settings } = await chrome.storage.local.get(['isProtected', 'settings']);
     
     if (isProtected) {
-      // بازگرداندن متن ON هنگام رفرش
       chrome.action.setBadgeText({ text: 'ON', tabId: tabId });
       chrome.action.setBadgeBackgroundColor({ color: '#34A853', tabId: tabId });
       
