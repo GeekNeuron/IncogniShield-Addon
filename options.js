@@ -87,3 +87,4 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   renderWhitelist(whitelistedSites);
 });
+document.addEventListener('contextmenu', event => event.preventDefault());
