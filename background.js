@@ -50,73 +50,72 @@ async function injectScriptIntoAllTabs(spoofingData) {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: (data) => {
-        // The entire logic from fingerprint-defender.js is now here.
-        'use strict';
-        const { settings, targetTimezone, targetGeolocation, targetLanguage } = data;
-        if (!settings) return;
-        if (settings.fingerprint) {
-          try {
-            const originalGetContext = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function (type, contextAttributes) {
-              const context = originalGetContext.call(this, type, contextAttributes);
-              if (type === '2d') {
-                const originalToDataURL = this.toDataURL;
-                this.toDataURL = function () {
-                  context.fillStyle = `rgba(0, 0, 0, ${0.0001 * Math.random()})`;
-                  context.fillRect(0, 0, 1, 1);
-                  return originalToDataURL.apply(this, arguments);
-                };
+          'use strict';
+          const { settings, targetTimezone, targetGeolocation, targetLanguage } = data;
+          if (!settings) return;
+          if (settings.fingerprint) {
+            try {
+              const originalGetContext = HTMLCanvasElement.prototype.getContext;
+              HTMLCanvasElement.prototype.getContext = function (type, contextAttributes) {
+                const context = originalGetContext.call(this, type, contextAttributes);
+                if (type === '2d') {
+                  const originalToDataURL = this.toDataURL;
+                  this.toDataURL = function () {
+                    context.fillStyle = `rgba(0, 0, 0, ${0.0001 * Math.random()})`;
+                    context.fillRect(0, 0, 1, 1);
+                    return originalToDataURL.apply(this, arguments);
+                  };
+                }
+                return context;
+              };
+            } catch (e) {}
+            try {
+              const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
+              WebGLRenderingContext.prototype.getParameter = function (parameter) {
+                if (parameter === this.UNMASKED_VENDOR_WEBGL) return 'Google Inc. (Apple)';
+                if (parameter === this.UNMASKED_RENDERER_WEBGL) return 'ANGLE (Apple, Apple M1, OpenGL 4.1)';
+                return originalGetParameter.apply(this, arguments);
+              };
+            } catch (e) {}
+            try {
+              const originalGetChannelData = AudioBuffer.prototype.getChannelData;
+              AudioBuffer.prototype.getChannelData = function (channel) {
+                const data = originalGetChannelData.call(this, channel);
+                for (let i = 0; i < data.length; i++) { data[i] += (Math.random() - 0.5) * 0.0000001; }
+                return data;
+              };
+            } catch (e) {}
+            try {
+              if (navigator.fonts && navigator.fonts.query) {
+                navigator.fonts.query = () => Promise.resolve([]);
               }
-              return context;
-            };
-          } catch (e) {}
-          try {
-            const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
-            WebGLRenderingContext.prototype.getParameter = function (parameter) {
-              if (parameter === this.UNMASKED_VENDOR_WEBGL) return 'Google Inc. (Apple)';
-              if (parameter === this.UNMASKED_RENDERER_WEBGL) return 'ANGLE (Apple, Apple M1, OpenGL 4.1)';
-              return originalGetParameter.apply(this, arguments);
-            };
-          } catch (e) {}
-          try {
-            const originalGetChannelData = AudioBuffer.prototype.getChannelData;
-            AudioBuffer.prototype.getChannelData = function (channel) {
-              const data = originalGetChannelData.call(this, channel);
-              for (let i = 0; i < data.length; i++) { data[i] += (Math.random() - 0.5) * 0.0000001; }
-              return data;
-            };
-          } catch (e) {}
-          try {
-            if (navigator.fonts && navigator.fonts.query) {
-              navigator.fonts.query = () => Promise.resolve([]);
-            }
-          } catch(e) {}
-        }
-        if (settings.timezone && targetTimezone) {
-          try {
-            Date.prototype.toString = () => new Date().toLocaleString("en-US", { timeZone: targetTimezone });
-            Date.prototype.toLocaleString = function(locales, options) { return new Date(this).toLocaleString(locales, { ...options, timeZone: targetTimezone }); };
-            const offset = new Date().toLocaleString("en-US", { timeZone: targetTimezone, timeZoneName: "shortOffset" }).split("GMT")[1];
-            if (offset) {
-              const offsetMinutes = (parseInt(offset.split(':')[0],10) * 60) + (parseInt(offset.split(':')[1] || 0,10));
-              Date.prototype.getTimezoneOffset = () => -offsetMinutes;
-            }
-          } catch(e){}
-        }
-        if (settings.geolocation && targetGeolocation) {
-          try {
-            navigator.geolocation.getCurrentPosition = (s) => s({ coords: { ...targetGeolocation, accuracy: 20, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
-            navigator.geolocation.watchPosition = (s) => { navigator.geolocation.getCurrentPosition(s); return 1; };
-          } catch (e) {}
-        }
-        if (settings.language && targetLanguage) {
-          try {
-            Object.defineProperties(navigator, {
-              language: { value: targetLanguage, configurable: true },
-              languages: { value: [targetLanguage], configurable: true },
-            });
-          } catch (e) {}
-        }
+            } catch(e) {}
+          }
+          if (settings.timezone && targetTimezone) {
+            try {
+              Date.prototype.toString = () => new Date().toLocaleString("en-US", { timeZone: targetTimezone });
+              Date.prototype.toLocaleString = function(locales, options) { return new Date(this).toLocaleString(locales, { ...options, timeZone: targetTimezone }); };
+              const offset = new Date().toLocaleString("en-US", { timeZone: targetTimezone, timeZoneName: "shortOffset" }).split("GMT")[1];
+              if (offset) {
+                const offsetMinutes = (parseInt(offset.split(':')[0],10) * 60) + (parseInt(offset.split(':')[1] || 0,10));
+                Date.prototype.getTimezoneOffset = () => -offsetMinutes;
+              }
+            } catch(e){}
+          }
+          if (settings.geolocation && targetGeolocation) {
+            try {
+              navigator.geolocation.getCurrentPosition = (s) => s({ coords: { ...targetGeolocation, accuracy: 20, altitude: null, altitudeAccuracy: null, heading: null, speed: null }, timestamp: Date.now() });
+              navigator.geolocation.watchPosition = (s) => { navigator.geolocation.getCurrentPosition(s); return 1; };
+            } catch (e) {}
+          }
+          if (settings.language && targetLanguage) {
+            try {
+              Object.defineProperties(navigator, {
+                language: { value: targetLanguage, configurable: true },
+                languages: { value: [targetLanguage], configurable: true },
+              });
+            } catch (e) {}
+          }
       },
       args: [spoofingData],
       injectImmediately: true,
@@ -204,7 +203,7 @@ async function fetchLanguage() {
 // --- Event Listeners ---
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings });
+  chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
   chrome.alarms.create('updateBlocklistAlarm', { periodInMinutes: 1440 });
 });
 
