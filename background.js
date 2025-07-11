@@ -8,7 +8,7 @@ const defaultSettings = {
 let blockedCounts = {};
 
 async function handleTabProtection(tabId) {
-  const { settings = defaultSettings, isProtected } = await chrome.storage.local.get(['settings', 'isProtected']);
+  const { settings = defaultSettings, isProtected } = await browser.storage.local.get(['settings', 'isProtected']);
 
   if (!isProtected) return;
 
@@ -24,9 +24,9 @@ async function handleTabProtection(tabId) {
 }
 
 async function applyGlobalProtections() {
-  const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await chrome.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
+  const { settings = defaultSettings, isProtected, whitelistedSites = [] } = await browser.storage.local.get(['settings', 'isProtected', 'whitelistedSites']);
 
-  await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.DEFAULT });
+  await browser.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.DEFAULT });
   await clearDynamicRules();
   
   if (!isProtected) {
@@ -36,7 +36,7 @@ async function applyGlobalProtections() {
   }
 
   if (settings.webrtc) {
-    await chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
+    await browser.privacy.network.webRTCIPHandlingPolicy.set({ value: WEBRTC_POLICIES.PROTECTED });
   }
   if (settings.tracker) {
     await updateDynamicRules(whitelistedSites);
@@ -44,7 +44,7 @@ async function applyGlobalProtections() {
 
   updateIcon(true);
 
-  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
+  const tabs = await browser.tabs.query({ url: ["http://*/*", "https://*/*"] });
   for (const tab of tabs) {
     handleTabProtection(tab.id);
   }
@@ -54,7 +54,7 @@ async function injectScript(tabId, spoofingData) {
     if (!spoofingData || !spoofingData.settings || Object.keys(spoofingData).length <= 1) return;
     if (!tabId) return;
 
-    chrome.scripting.executeScript({
+    browser.scripting.executeScript({
       target: { tabId: tabId, allFrames: true },
       func: (data) => {
           'use strict';
@@ -131,14 +131,14 @@ async function injectScript(tabId, spoofingData) {
 }
 
 async function reloadAllTabs() {
-    const tabs = await chrome.tabs.query({url: ["http://*/*", "https://*/*"]});
+    const tabs = await browser.tabs.query({url: ["http://*/*", "https://*/*"]});
     for (const tab of tabs) {
-      try { await chrome.tabs.reload(tab.id, { bypassCache: true }); } catch (e) {}
+      try { await browser.tabs.reload(tab.id, { bypassCache: true }); } catch (e) {}
     }
 }
 
 async function updateDynamicRules(whitelistedSites = []) {
-  const { customBlocklists = [] } = await chrome.storage.local.get('customBlocklists');
+  const { customBlocklists = [] } = await browser.storage.local.get('customBlocklists');
   const allBlocklistUrls = [...DEFAULT_BLOCKLISTS, ...customBlocklists];
   const domains = await fetchAndParseDomains(allBlocklistUrls);
   const trackerBlockRules = domains.map((d, i) => ({ id: i + 1, priority: 1, action: { type: 'block' }, condition: { urlFilter: `||${d}`, excludedRequestDomains: whitelistedSites, resourceTypes: ['main_frame', 'sub_frame', 'script', 'image', 'xmlhttprequest', 'stylesheet', 'media'] } }));
@@ -158,8 +158,8 @@ async function updateDynamicRules(whitelistedSites = []) {
   };
 
   const allRules = [...trackerBlockRules, headerRemovalRule];
-  const oldRules = await chrome.declarativeNetRequest.getDynamicRules();
-  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldRules.map(r => r.id), addRules: allRules });
+  const oldRules = await browser.declarativeNetRequest.getDynamicRules();
+  await browser.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldRules.map(r => r.id), addRules: allRules });
 }
 
 async function fetchAndParseDomains(urls) {
@@ -175,17 +175,17 @@ async function fetchAndParseDomains(urls) {
 }
 
 async function clearDynamicRules() {
-  const oldRules = await chrome.declarativeNetRequest.getDynamicRules();
+  const oldRules = await browser.declarativeNetRequest.getDynamicRules();
   if (oldRules.length > 0) {
-    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldRules.map(r => r.id) });
+    await browser.declarativeNetRequest.updateDynamicRules({ removeRuleIds: oldRules.map(r => r.id) });
   }
 }
 
 function updateIcon(isProtected) {
   const iconPath = isProtected ? 'icons/icon-on-16.png' : 'icons/icon-off-16.png';
-  chrome.action.setIcon({ path: iconPath });
-  chrome.action.setBadgeText({ text: isProtected ? 'ON' : '' });
-  chrome.action.setBadgeBackgroundColor({ color: '#34A853' });
+  browser.action.setIcon({ path: iconPath });
+  browser.action.setBadgeText({ text: isProtected ? 'ON' : '' });
+  browser.action.setBadgeBackgroundColor({ color: '#34A853' });
 }
 
 async function fetchTimezone() {
@@ -206,54 +206,54 @@ async function fetchLanguage() {
   return null;
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
-  chrome.alarms.create('updateBlocklistAlarm', { periodInMinutes: 1440 });
+browser.runtime.onInstalled.addListener(() => {
+  browser.storage.local.set({ isProtected: false, whitelistedSites: [], settings: defaultSettings, customBlocklists: [] });
+  browser.alarms.create('updateBlocklistAlarm', { periodInMinutes: 1440 });
 });
 
-chrome.runtime.onStartup.addListener(async () => {
-  const { isProtected } = await chrome.storage.local.get('isProtected');
+browser.runtime.onStartup.addListener(async () => {
+  const { isProtected } = await browser.storage.local.get('isProtected');
   if (isProtected) await applyGlobalProtections();
   else updateIcon(false);
 });
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+browser.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'updateBlocklistAlarm') {
-    const { isProtected, settings } = await chrome.storage.local.get(['isProtected', 'settings']);
-    if (isProtected && settings.tracker) await updateDynamicRules((await chrome.storage.local.get('whitelistedSites')).whitelistedSites);
+    const { isProtected, settings } = await browser.storage.local.get(['isProtected', 'settings']);
+    if (isProtected && settings.tracker) await updateDynamicRules((await browser.storage.local.get('whitelistedSites')).whitelistedSites);
   }
 });
 
-chrome.webRequest.onErrorOccurred.addListener((details) => {
+browser.webRequest.onErrorOccurred.addListener((details) => {
   if (details.error === 'net::ERR_BLOCKED_BY_CLIENT' && details.tabId > 0) {
     blockedCounts[details.tabId] = (blockedCounts[details.tabId] || 0) + 1;
-    chrome.action.setBadgeText({ text: blockedCounts[details.tabId].toString(), tabId: details.tabId });
-    chrome.action.setBadgeBackgroundColor({ color: '#d32f2f', tabId: details.tabId });
+    browser.action.setBadgeText({ text: blockedCounts[details.tabId].toString(), tabId: details.tabId });
+    browser.action.setBadgeBackgroundColor({ color: '#d32f2f', tabId: details.tabId });
   }
 }, { urls: ['<all_urls>'] });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' && tab.url && (tab.url.startsWith('http:') || tab.url.startsWith('https:'))) {
     blockedCounts[tabId] = 0;
-    const { isProtected } = await chrome.storage.local.get('isProtected');
+    const { isProtected } = await browser.storage.local.get('isProtected');
     if (isProtected) {
-      chrome.action.setBadgeText({ text: 'ON', tabId: tabId });
-      chrome.action.setBadgeBackgroundColor({ color: '#34A853', tabId: tabId });
+      browser.action.setBadgeText({ text: 'ON', tabId: tabId });
+      browser.action.setBadgeBackgroundColor({ color: '#34A853', tabId: tabId });
       
       handleTabProtection(tabId);
     } else {
-      chrome.action.setBadgeText({ text: '', tabId: tabId });
+      browser.action.setBadgeText({ text: '', tabId: tabId });
     }
   }
 });
 
-chrome.tabs.onRemoved.addListener(tabId => delete blockedCounts[tabId]);
+browser.tabs.onRemoved.addListener(tabId => delete blockedCounts[tabId]);
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
     case "toggleGlobalProtection":
-      chrome.storage.local.get('isProtected', data => {
-        chrome.storage.local.set({ isProtected: !data.isProtected }).then(applyGlobalProtections);
+      browser.storage.local.get('isProtected', data => {
+        browser.storage.local.set({ isProtected: !data.isProtected }).then(applyGlobalProtections);
       });
       break;
     case "whitelistChanged":
@@ -275,7 +275,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
       const timePeriod = { since: (new Date()).getTime() - (24 * 60 * 60 * 1000) };
 
-      chrome.BrowseData.remove(timePeriod, dataTypesToRemove, () => {
+      browser.BrowseData.remove(timePeriod, dataTypesToRemove, () => {
         reloadAllTabs();
       });
       break;
