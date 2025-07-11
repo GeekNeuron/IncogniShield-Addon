@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-  const { settings } = await chrome.storage.local.get('settings');
+  const { settings } = await browser.storage.local.get('settings');
   if (settings && settings.darkMode) {
     document.body.classList.add('dark-theme');
   }
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openOptionsLink = document.getElementById('open-options');
   const openHelpLink = document.getElementById('open-help');
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   if (!tab || !tab.url || !tab.url.startsWith('http')) {
     document.body.innerHTML = '<div class="header-container"><img src="icons/icon-on-128.png" alt="ZeroTrace Icon" width="48" height="48"><p class="header-subtitle">Your Advanced Privacy Companion</p></div><p>This page cannot be analyzed.</p>';
     if (settings && settings.darkMode) document.body.classList.add('dark-theme');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentHostname = new URL(tab.url).hostname;
   if(currentSiteP) currentSiteP.textContent = currentHostname;
 
-  const data = await chrome.storage.local.get(['isProtected', 'whitelistedSites']);
+  const data = await browser.storage.local.get(['isProtected', 'whitelistedSites']);
   let isProtected = !!data.isProtected;
   let whitelistedSites = data.whitelistedSites || [];
   let isCurrentSiteWhitelisted = whitelistedSites.includes(currentHostname);
@@ -43,36 +43,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateUI();
 
-  chrome.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
+  browser.runtime.sendMessage({ action: 'getTabCount', tabId: tab.id }, response => {
     if (response && blockedCountSpan) blockedCountSpan.textContent = response.count;
   });
 
   toggleGlobalBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: "toggleGlobalProtection" });
+    browser.runtime.sendMessage({ action: "toggleGlobalProtection" });
     window.close();
   });
 
   if (toggleSiteBtn) {
     toggleSiteBtn.addEventListener('click', async () => {
-      const { whitelistedSites: currentList = [] } = await chrome.storage.local.get('whitelistedSites');
+      const { whitelistedSites: currentList = [] } = await browser.storage.local.get('whitelistedSites');
       if (currentList.includes(currentHostname)) {
-        await chrome.storage.local.set({ whitelistedSites: currentList.filter(site => site !== currentHostname) });
+        await browser.storage.local.set({ whitelistedSites: currentList.filter(site => site !== currentHostname) });
       } else {
-        await chrome.storage.local.set({ whitelistedSites: [...currentList, currentHostname] });
+        await browser.storage.local.set({ whitelistedSites: [...currentList, currentHostname] });
       }
-      chrome.runtime.sendMessage({ action: "whitelistChanged" });
+      browser.runtime.sendMessage({ action: "whitelistChanged" });
       window.close();
     });
   }
 
   openOptionsLink.addEventListener('click', e => {
     e.preventDefault();
-    chrome.runtime.openOptionsPage();
+    browser.runtime.openOptionsPage();
   });
 
   openHelpLink.addEventListener('click', e => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'help.html' });
+    browser.tabs.create({ url: 'help.html' });
   });
 
   runTestBtn.addEventListener('click', async () => {
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearDataBtn.addEventListener('click', () => {
       clearDataBtn.disabled = true;
       clearDataBtn.textContent = 'Clearing...';
-      chrome.runtime.sendMessage({ action: "clearPrivacyData" });
+      browser.runtime.sendMessage({ action: "clearPrivacyData" });
       setTimeout(() => window.close(), 2000);
     });
   }
