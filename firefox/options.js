@@ -9,7 +9,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
     timezone: true, geolocation: true, language: true, darkMode: false,
   };
 
-  const { settings = defaultSettings, whitelistedSites = [], customBlocklists = [] } = await chrome.storage.local.get(['settings', 'whitelistedSites', 'customBlocklists']);
+  const { settings = defaultSettings, whitelistedSites = [], customBlocklists = [] } = await browser.storage.local.get(['settings', 'whitelistedSites', 'customBlocklists']);
 
   const applyTheme = (isDark) => {
     document.body.classList.toggle('dark-theme', isDark);
@@ -23,9 +23,9 @@ document.addEventListener('contextmenu', event => event.preventDefault());
   if (darkModeToggle) {
     darkModeToggle.addEventListener('change', async (event) => {
       const isDark = event.target.checked;
-      const { settings: currentSettings = defaultSettings } = await chrome.storage.local.get('settings');
+      const { settings: currentSettings = defaultSettings } = await browser.storage.local.get('settings');
       currentSettings.darkMode = isDark;
-      await chrome.storage.local.set({ settings: currentSettings });
+      await browser.storage.local.set({ settings: currentSettings });
       applyTheme(isDark);
     });
   }
@@ -38,10 +38,10 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 
     toggle.addEventListener('change', async event => {
       const value = event.target.checked;
-      const { settings: currentSettings = defaultSettings } = await chrome.storage.local.get('settings');
+      const { settings: currentSettings = defaultSettings } = await browser.storage.local.get('settings');
       currentSettings[key] = value;
-      await chrome.storage.local.set({ settings: currentSettings });
-      chrome.runtime.sendMessage({ action: "settingsChanged" });
+      await browser.storage.local.set({ settings: currentSettings });
+      browser.runtime.sendMessage({ action: "settingsChanged" });
     });
   });
 
@@ -51,9 +51,9 @@ document.addEventListener('contextmenu', event => event.preventDefault());
   if (saveBlocklistsBtn) {
       saveBlocklistsBtn.addEventListener('click', async () => {
         const urls = blocklistUrlsTextarea.value.split('\n').map(url => url.trim()).filter(Boolean);
-        await chrome.storage.local.set({ customBlocklists: urls });
+        await browser.storage.local.set({ customBlocklists: urls });
         
-        chrome.runtime.sendMessage({ action: "settingsChanged" });
+        browser.runtime.sendMessage({ action: "settingsChanged" });
         saveBlocklistsBtn.textContent = 'Saved!';
         setTimeout(() => { saveBlocklistsBtn.textContent = 'Save and Update Rules'; }, 2000);
       });
@@ -75,10 +75,10 @@ document.addEventListener('contextmenu', event => event.preventDefault());
       removeBtn.dataset.site = site;
       removeBtn.addEventListener('click', async () => {
         const siteToRemove = removeBtn.dataset.site;
-        const { whitelistedSites: currentSites = [] } = await chrome.storage.local.get('whitelistedSites');
+        const { whitelistedSites: currentSites = [] } = await browser.storage.local.get('whitelistedSites');
         const newSites = currentSites.filter(s => s !== siteToRemove);
-        await chrome.storage.local.set({ whitelistedSites: newSites });
-        chrome.runtime.sendMessage({ action: "whitelistChanged" });
+        await browser.storage.local.set({ whitelistedSites: newSites });
+        browser.runtime.sendMessage({ action: "whitelistChanged" });
         renderWhitelist(newSites);
       });
       li.appendChild(removeBtn);
